@@ -11,6 +11,7 @@ WINE_OUT_FIELDS = 13
 
 
 prompt_template = f'''
+### Instruction:
 Given the CSV file with content:
 
 {{products}}
@@ -35,6 +36,8 @@ Output should contain the same number of items as input.
 Output MUST contain header.
 Output columns MUST be pipe-separated.
 Output MUST have {WINE_OUT_FIELDS} columns
+
+### Response:
 '''
 
 products = '''
@@ -79,11 +82,25 @@ def parse_args():
 
 def main():
     args = parse_args()
-    llm = AutoModelForCausalLM.from_pretrained(args.model, model_type='llama')
+    llm = AutoModelForCausalLM.from_pretrained(
+        args.model, model_type='llama', stream=True, temperature=0, max_new_tokens=2048
+    )
     prompt = prompt_template.format(products=products)
     print(prompt)
-    print('='*80)
-    print(llm(prompt))
+    print('=' * 80)
+
+    last_n = False
+    for line in llm(prompt, stream=True, temperature=0, max_new_tokens=4096):
+        if not line:
+            continue
+        if line == '\n':
+            if last_n:
+                continue
+            print(line, end='')
+            last_n = True
+            continue
+        last_n = False
+        print(line, end='')
 
 
 if __name__ == '__main__':

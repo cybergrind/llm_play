@@ -23,7 +23,9 @@ packaging==23.1
 pyyaml==6.0
     # via huggingface-hub
 requests==2.31.0
-    # via huggingface-hub
+    # via
+    #   -r requirements.in
+    #   huggingface-hub
 tqdm==4.65.0
     # via huggingface-hub
 typing-extensions==4.6.2

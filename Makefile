@@ -1,10 +1,9 @@
 
-requirements.txt: requirements.in
-	pip-compile --output-file requirements.txt requirements.in
+requirements/requirements.txt: requirements/requirements.in
+	pip-compile --output-file requirements/requirements.txt requirements/requirements.in
 
 
 venv: requirements.txt
 	python3 -m venv venv
-	./venv/bin/pip install -r requirements.txt
-	./venv/bin/pip install -e .
+	./venv/bin/pip install -r requirements/requirements.txt
 	touch venv

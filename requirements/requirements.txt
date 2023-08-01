@@ -20,6 +20,8 @@ huggingface-hub==0.14.1
     # via ctransformers
 idna==3.4
     # via requests
+iniconfig==2.0.0
+    # via pytest
 joblib==1.3.1
     # via nltk
 nltk==3.8.1
@@ -27,7 +29,13 @@ nltk==3.8.1
 numpy==1.25.2
     # via -r requirements/requirements.in
 packaging==23.1
-    # via huggingface-hub
+    # via
+    #   huggingface-hub
+    #   pytest
+pluggy==1.2.0
+    # via pytest
+pytest==7.4.0
+    # via -r requirements/requirements.in
 pyyaml==6.0
     # via huggingface-hub
 regex==2023.6.3

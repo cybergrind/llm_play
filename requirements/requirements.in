@@ -2,3 +2,4 @@ ctransformers
 requests
 nltk
 numpy
+pytest

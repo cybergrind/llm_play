@@ -23,6 +23,7 @@ def parse_args():
         "input", help="input_file for summarization", type=lambda x: Path(x).read_text()
     )
     parser.add_argument("-o", "--output", default="out.txt", type=Path)
+    parser.add_argument('--ctx', default=4096, type=int)
     return parser.parse_args()
 
 

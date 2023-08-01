@@ -14,15 +14,25 @@ ASSISTANT:
 """
 
 
-def query_api(prompt, temperature=0.7):
+DIVINE = {
+    'temparature': 1.31,
+    'repetition_penalty': 1.17,
+    'top_k': 49.0,
+    'top_p': 0.14,
+    'typical_p': 1.0,
+    'top_a': 0.52,
+    'epsion_cutoff': 1.49,
+    'eta_cutoff': 10.42,
+}
+
+
+def query_api(prompt, preset=None):
     url = f"{API_ENDPOINT}/v1/generate"
 
-    data = {
-        "prompt": prompt,
-        "truncation_length": 1024 * 16,
-        "max_new_tokens": 1000,
-        "temperature": temperature,
-    }
+    if not preset:
+        preset = DIVINE
+
+    data = {**preset, "prompt": prompt, "truncation_length": 1024 * 16, "max_new_tokens": 1000}
     resp = requests.post(url, json=data)
     resp.raise_for_status()
     data = resp.json()["results"][0]["text"].strip()

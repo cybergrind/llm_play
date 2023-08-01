@@ -7,11 +7,11 @@ import json
 import logging
 from pathlib import Path
 
-import requests
+from utils.query import query_api, make_airoboros
+from utils.splitters import split_into_chapters_ttt as split
 
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 log = logging.getLogger("summary_generator")
 
 
@@ -26,7 +26,7 @@ def parse_args():
     return parser.parse_args()
 
 
-API_ENDPOINT = "http://localhost:5000/api"
+
 BIG_SUMMARY_START = "<STORY_START>\n"
 BIG_SUMMARY_END = """
 <STORY_END>
@@ -45,40 +45,43 @@ INSTRUCTION:
 * at least several summaries should prove that the text is about the topic
 * final summary should be around 500-1000 characters
 
-FINAL SUMMARY:
-
+Write final summary below.
 """
 
 
-def query_api(prompt, temperature=0.7):
-    url = f"{API_ENDPOINT}/v1/generate"
-
-    data = {
-        "prompt": prompt,
-        "truncation_length": 1024 * 16,
-        "max_new_tokens": 1000,
-        "temperature": temperature,
-    }
-    resp = requests.post(url, json=data)
-    resp.raise_for_status()
-    data = resp.json()["results"][0]["text"].strip()
+def do_summary(text, args):
+    prompt = f"{BIG_SUMMARY_START}\n{text}\n{BIG_SUMMARY_END}"
+    data = query_api(make_airoboros(prompt))
+    if not data:
+        log.info("No data")
+        return False
     return data
 
 
 def do_big_summary(args):
-    prompt = f"{BIG_SUMMARY_START}\n{args.input}\n{BIG_SUMMARY_END}"
-    data = query_api(prompt)
-    if not data:
-        log.info("No data")
-        return False
-    json_line = json.dumps({"summary": data})
+    summaries = []
+    for paragraph in split(args.input):
+        data = None
+        while not data:
+            data = do_summary(paragraph, args)
+            if not data:
+                continue
+            summaries.append(data)
+
+    joined_summaries = '\n======\n'.join(summaries)
+    with open('tmp.ttt', 'a') as f:
+        f.write('Iteration:\n\n')
+        f.write(joined_summaries)
+
+    final_summary = do_summary(joined_summaries, args)
+    json_line = json.dumps({"summary": final_summary})
     # append to args.temp
     if not args.temp.exists():
         args.temp.touch()
     tmp: Path = args.temp
     with tmp.open("a") as f:
         f.write(json_line + "\n")
-    return data
+    return True
 
 
 def num_summaries(path: Path):
@@ -99,6 +102,8 @@ def summary_of_summaries(args):
         if not line:
             continue
         data = json.loads(line)
+        if not data or not data["summary"]:
+            continue
         summaries.append(data["summary"])
     content = "==============\n".join(summaries)
     prompt = f"{SUPER_SUMMARY_START}\n{content}\n{SUPER_SUMMARY_END}"

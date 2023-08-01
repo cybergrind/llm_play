@@ -1,2 +1,4 @@
 ctransformers
 requests
+nltk
+numpy

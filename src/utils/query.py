@@ -26,7 +26,7 @@ DIVINE = {
 }
 
 
-def query_api(prompt, preset=None):
+def query_api(prompt, preset=None) -> str:
     url = f"{API_ENDPOINT}/v1/generate"
 
     if not preset:

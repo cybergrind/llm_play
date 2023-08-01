@@ -5,10 +5,13 @@ summarize text using text-generation-webui API
 import argparse
 import json
 import logging
+from functools import partial
 from pathlib import Path
+from typing import Callable, Union
 
-from utils.query import query_api, make_airoboros
-from utils.splitters import split_into_chapters_ttt as split
+from utils.iterators import split_with_overlap
+from utils.query import make_airoboros, query_api
+from utils.splitters import split_into_chapters_ttt as split_chapters
 
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -24,16 +27,18 @@ def parse_args():
     )
     parser.add_argument("-o", "--output", default="out.txt", type=Path)
     parser.add_argument('--ctx', default=4096, type=int)
+    parser.add_argument('--strategy', default='dichotomy', choices=['dichotomy', 'cummulative'])
     return parser.parse_args()
 
 
-
-BIG_SUMMARY_START = "<STORY_START>\n"
+SEP = '\n\n====\n\n'
+BIG_SUMMARY_START = "We need to summarize part of the story\n<PART_STORY_START>\n"
 BIG_SUMMARY_END = """
-<STORY_END>
+<PART_STORY_END>
 ======================================================================
-SUMMARIZED STORY:
-
+Write summary about the part of the story.
+This summary will be used in the bigger summary so it should have only significant details.
+Make it shorter.
 """
 
 SUPER_SUMMARY_START = "<SUMMARIES_START>\n"
@@ -50,32 +55,90 @@ Write final summary below.
 """
 
 
-def do_summary(text, args):
+class Summaries(list):
+    def __init__(self, path):
+        super().__init__()
+        self.path = path
+        self.load()
+
+    def append(self, summary):
+        super().append(summary)
+        self.dump()
+
+    def load(self):
+        if not self.path.exists():
+            return
+
+        with self.path.open('r') as f:
+            for line in f.readlines():
+                data = json.loads(line)
+                self.append(data['summary'])
+
+    def dump(self):
+        with self.path.open('w') as f:
+            for summary in self:
+                data = json.dumps({"summary": summary})
+                f.write(data + '\n')
+
+
+def summary_query(lst_or_text: Union[list, str]):
+    if isinstance(lst_or_text, list):
+        text = SEP.join(lst_or_text)
+    else:
+        text = lst_or_text
     prompt = f"{BIG_SUMMARY_START}\n{text}\n{BIG_SUMMARY_END}"
-    data = query_api(make_airoboros(prompt))
+    return make_airoboros(prompt)
+
+
+def do_summary(prompt, args):
+    assert len(prompt) < args.ctx, f'{len(prompt)=} / {prompt=}'
+    data = query_api(prompt)
     if not data:
         log.info("No data")
         return False
     return data
 
 
+def check_size(ctx_size, text, func=None):
+    if func:
+        size = len(func(text))
+    else:
+        size = len(text)
+    print(f'{size=}')
+    return size < ctx_size
+
+
+def recursive_summary(prepare: Callable[[list], str], summaries, args):
+    query = prepare(summaries)
+
+    if len(query) > args.ctx:
+        if args.strategy == 'dichotomy':
+            func = partial(check_size, args.ctx, func=prepare)
+            batched = split_with_overlap(summaries, overlap=1, func=func)
+            subsummaries = Summaries(Path('recursive.jsonl'))
+            for batch in batched:
+                data = do_summary(prepare(batch), args)
+                assert data, f'No data? {data=}'
+                subsummaries.append(data)
+            return recursive_summary(prepare, subsummaries, args)
+        else:
+            raise NotImplementedError
+    return do_summary(query, args)
+
+
 def do_big_summary(args):
-    summaries = []
-    for paragraph in split(args.input):
+    summaries = Summaries(Path('tmp_ttt.jsonl'))
+    chapters_to_process = split_chapters(args.input)[len(summaries) :]
+    for paragraph in chapters_to_process:
         data = None
         while not data:
-            data = do_summary(paragraph, args)
+            data = do_summary(summary_query(paragraph), args)
             if not data:
                 continue
             summaries.append(data)
-
-    joined_summaries = '\n======\n'.join(summaries)
-    with open('tmp.ttt', 'a') as f:
-        f.write('Iteration:\n\n')
-        f.write(joined_summaries)
-
-    final_summary = do_summary(joined_summaries, args)
+    final_summary = recursive_summary(summary_query, summaries, args)
     json_line = json.dumps({"summary": final_summary})
+
     # append to args.temp
     if not args.temp.exists():
         args.temp.touch()
@@ -106,7 +169,7 @@ def summary_of_summaries(args):
         if not data or not data["summary"]:
             continue
         summaries.append(data["summary"])
-    content = "==============\n".join(summaries)
+    content = SEP.join(summaries)
     prompt = f"{SUPER_SUMMARY_START}\n{content}\n{SUPER_SUMMARY_END}"
     data = query_api(prompt)
     args.output.write_text(data)

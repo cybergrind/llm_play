@@ -41,10 +41,9 @@ def split_into_chapters_llm(text: str, llm_func: Callable[str, str]):
 
 
 def split_into_chapters_ttt(text: str):
-    ttt = TextTilingTokenizer(w=100, k=140)
+    ttt = TextTilingTokenizer(w=40, k=100)
     splits = ttt.tokenize(text)
-    for i, split in enumerate(splits):
-        yield split
+    return splits
 
 
 def main():

@@ -41,8 +41,14 @@ def split_with_overlap(lst: list, overlap: int, func: Callable[[list], bool]):
         return []
     if len(lst) == 1:
         return [lst]
+
     if func(lst):
         return [lst]
+
+    if len(lst) == 2:
+        assert all(func([item]) for item in lst)
+        return [[lst[0]], [lst[1]]]
+
     mid = len(lst) // 2
 
     over_left, over_right = math.floor(overlap / 2), math.ceil(overlap / 2)
@@ -52,6 +58,7 @@ def split_with_overlap(lst: list, overlap: int, func: Callable[[list], bool]):
 
     left = lst[: mid + over_right]
     right = lst[mid - over_left :]
+    print(f'{len(left)=} {len(right)=} {mid=}')
 
     left = split_with_overlap(left, overlap, func)
     right = split_with_overlap(right, overlap, func)

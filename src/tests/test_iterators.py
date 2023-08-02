@@ -23,6 +23,7 @@ def test_split_with_overlap():
     def split_test(lst):
         return len(lst) <= 2
 
+    assert split_with_overlap([1, 2, 3], 0, split_test) == [[1], [2, 3]]
     assert split_with_overlap([1, 2, 3], 1, split_test) == [[1, 2], [2, 3]]
     assert split_with_overlap([1, 2, 3, 4], 1, split_test) == [[1, 2], [2, 3], [3, 4]]
     assert split_with_overlap([1, 2, 3, 4], 2, split_test) == [[1, 2], [2, 3], [2, 3], [3, 4]]

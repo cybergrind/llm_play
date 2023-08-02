@@ -31,7 +31,7 @@ def parse_args():
     return parser.parse_args()
 
 
-SEP = '\n\n====\n\n'
+SEP = '\n====\n'
 BIG_SUMMARY_START = "We need to summarize part of the story\n<PART_STORY_START>\n"
 BIG_SUMMARY_END = """
 <PART_STORY_END>
@@ -56,9 +56,11 @@ Write final summary below.
 
 
 class Summaries(list):
-    def __init__(self, path):
+    def __init__(self, path, wipe=False):
         super().__init__()
         self.path = path
+        if wipe and self.path.exists():
+            self.path.unlink()
         self.load()
 
     def append(self, summary):
@@ -86,7 +88,7 @@ def summary_query(lst_or_text: Union[list, str]):
         text = SEP.join(lst_or_text)
     else:
         text = lst_or_text
-    prompt = f"{BIG_SUMMARY_START}\n{text}\n{BIG_SUMMARY_END}"
+    prompt = f"{BIG_SUMMARY_START}{text}{BIG_SUMMARY_END}"
     return make_airoboros(prompt)
 
 
@@ -108,19 +110,20 @@ def check_size(ctx_size, text, func=None):
     return size < ctx_size
 
 
-def recursive_summary(prepare: Callable[[list], str], summaries, args):
+def recursive_summary(prepare: Callable[[list], str], summaries, args, nested=0):
     query = prepare(summaries)
+    log.info(f'Recursive summary [{nested}]: {len(summaries)=} vs {len(query)=} vs {args.ctx=}')
 
     if len(query) > args.ctx:
         if args.strategy == 'dichotomy':
             func = partial(check_size, args.ctx, func=prepare)
-            batched = split_with_overlap(summaries, overlap=1, func=func)
-            subsummaries = Summaries(Path('recursive.jsonl'))
+            batched = split_with_overlap(summaries, overlap=0, func=func)
+            subsummaries = Summaries(Path(f'recursive.{nested}.jsonl'), wipe=True)
             for batch in batched:
                 data = do_summary(prepare(batch), args)
                 assert data, f'No data? {data=}'
                 subsummaries.append(data)
-            return recursive_summary(prepare, subsummaries, args)
+            return recursive_summary(prepare, subsummaries, args, nested=nested + 1)
         else:
             raise NotImplementedError
     return do_summary(query, args)

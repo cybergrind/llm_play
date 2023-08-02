@@ -19,12 +19,13 @@ ASSISTANT:{end}
 
 
 DIVINE = {
-    'temparature': 0.7,
-    'repetition_penalty': 1.17,
-    'top_k': 35.0,
+    'temparature': 0.55,
+    'repetition_penalty': 1.3,
+    'repetition_penalty_range': 128,
+    'top_k': 33.0,
     'top_p': 0.6,
     'typical_p': 1.0,
-    'top_a': 0.52,
+    'top_a': 0.0,
     #'epsion_cutoff': 1.49,
     #'eta_cutoff': 10.42,
     'length_penalty': 0.8,

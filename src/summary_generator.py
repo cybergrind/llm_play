@@ -133,8 +133,10 @@ def recursive_summary(prepare: Callable[[list], str], summaries, args, nested=0)
     return do_summary(query, args)
 
 
+BIG_SUMMARIES = Path('tmp_ttt.jsonl')
+
 def do_big_summary(args):
-    summaries = Summaries(Path('tmp_ttt.jsonl'))
+    summaries = Summaries(BIG_SUMMARIES)
     chapters_to_process = split_chapters(args.input)[len(summaries) :]
     for paragraph in chapters_to_process:
         data = None
@@ -189,6 +191,7 @@ def main(args):
     while curr_summaries < args.num_interations:
         if do_big_summary(args):
             curr_summaries += 1
+            BIG_SUMMARIES.unlink()
             log.debug(f"Iteration finished: {curr_summaries}")
     summary_of_summaries(args)
 

@@ -32,14 +32,10 @@ def parse_args():
 
 
 SEP = '\n====\n'
-BIG_SUMMARY_START = "We need to summarize part of the story\n<PART_STORY_START>\n"
-BIG_SUMMARY_END = """
-<PART_STORY_END>
-======================================================================
-Write summary about the part of the story.
-This summary will be used in the bigger summary so it should have only significant details.
-Make it shorter.
-"""
+BIG_SUMMARY_START = (
+    "Please summarize the following story in roughly 30 words, maintaining only the key points:\n"
+)
+BIG_SUMMARY_END = ''
 
 SUPER_SUMMARY_START = "<SUMMARIES_START>\n"
 SUPER_SUMMARY_END = """<SUMMARIES_END>
@@ -83,13 +79,13 @@ class Summaries(list):
                 f.write(data + '\n')
 
 
-def summary_query(lst_or_text: Union[list, str]):
+def summary_query(lst_or_text: Union[list, str], end=' '):
     if isinstance(lst_or_text, list):
         text = SEP.join(lst_or_text)
     else:
         text = lst_or_text
     prompt = f"{BIG_SUMMARY_START}{text}{BIG_SUMMARY_END}"
-    return make_airoboros(prompt)
+    return make_airoboros(prompt, end=end)
 
 
 def do_summary(prompt, args):
@@ -120,8 +116,16 @@ def recursive_summary(prepare: Callable[[list], str], summaries, args, nested=0)
             batched = split_with_overlap(summaries, overlap=0, func=func)
             subsummaries = Summaries(Path(f'recursive.{nested}.jsonl'), wipe=True)
             for batch in batched:
-                data = do_summary(prepare(batch), args)
-                assert data, f'No data? {data=}'
+                data = ''
+                not_summarized = True
+                while not_summarized:
+                    data = do_summary(prepare(batch), args)
+                    assert data, f'No data? {data=}'
+                    if len(data) > args.ctx // 2:
+                        log.debug(f'retry summarization: {len(data)=}')
+                        batch = [data]
+                    else:
+                        not_summarized = False
                 subsummaries.append(data)
             return recursive_summary(prepare, subsummaries, args, nested=nested + 1)
         else:
@@ -139,7 +143,9 @@ def do_big_summary(args):
             if not data:
                 continue
             summaries.append(data)
-    final_summary = recursive_summary(summary_query, summaries, args)
+    final_summary = recursive_summary(
+        partial(summary_query, end=" Summary: \n"), summaries, args
+    )
     json_line = json.dumps({"summary": final_summary})
 
     # append to args.temp

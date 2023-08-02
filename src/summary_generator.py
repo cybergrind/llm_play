@@ -141,10 +141,14 @@ def do_big_summary(args):
     for paragraph in chapters_to_process:
         data = None
         while not data:
-            data = do_summary(summary_query(paragraph), args)
-            if not data:
+            candidate = do_summary(summary_query(paragraph), args)
+            if not candidate:
                 continue
-            summaries.append(data)
+            if len(candidate) > args.ctx // 2:
+                paragraph = candidate
+                continue
+            summaries.append(candidate)
+            data = candidate
     final_summary = recursive_summary(
         partial(summary_query, end=" Summary: \n"), summaries, args
     )

@@ -19,7 +19,7 @@ ASSISTANT:{end}
 
 
 DIVINE = {
-    'temparature': 0.55,
+    'temparature': 0.7,
     'repetition_penalty': 1.3,
     'repetition_penalty_range': 128,
     'top_k': 33.0,

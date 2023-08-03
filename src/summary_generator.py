@@ -121,9 +121,11 @@ def recursive_summary(prepare: Callable[[list], str], summaries, args, nested=0)
                 while not_summarized:
                     data = do_summary(prepare(batch), args)
                     assert data, f'No data? {data=}'
-                    if len(data) > args.ctx // 2:
+                    prepared_data = prepare([data])
+                    if len(prepared_data) > args.ctx // 2:
                         log.debug(f'retry summarization: {len(data)=}')
-                        batch = [data]
+                        if len(prepared_data) < args.ctx:
+                            batch = [data]
                     else:
                         not_summarized = False
                 subsummaries.append(data)

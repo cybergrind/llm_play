@@ -3,3 +3,6 @@ requests
 nltk
 numpy
 pytest
+
+transformers
+accelerate

@@ -8,3 +8,11 @@ TEXT1 = '''
 5. Barlow wins unanimously as new Polar president dismisses old one completely taking control over world finances and starting program building his own palace with painters working on portraits/statues; TV shows ad for _Parfum Assault Criminale_ but Mrs. Garvy thinks it's impossible because she thought only rocket that went there crashed onto Moon, while Buzz Rentshaw makes fun of her hazy convictions about space travel on _Henry's Other Mistress_.
 6. A woman named Mrs. Garvy goes to a freud with amnesia and can't remember things like everyone else did so he suggests she take vacation on Venus for its soap root; later family finds an article in his journal about going there after disciplining herself out of rocket-ship obsession, enjoying the trip despite not seeing anything due to meteorite season exploring tropical island with free soap root/delicious fruits from Earth transplants playing cards or craps during takeoff & landing. Nations envy Columbia's freedom so they discuss an ambitious plan called "The Venusian Way" - sending one city at time wrecking empty cities for steel, Black-Kupperman reads out loud but another responds feebly saying we have no time to waste because it must be American!
 '''
+
+
+TEXT2 = ''' PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by the shutoffs which were expected to last through at least midday tomorrow.'''
+
+TEXT3 = '''o2. The roadside jingle has an alert system with each word read before the next one is shown while Barlow escapes police who seem to have mind-reading machines & TV eyes; he draws carbonated orange drink from another glassy wrapper but spills all over himself, noticing people still wear clothes and smoke/eat in shops near movie theaters showing _Babies Are Terrible_, Don't Have Children_.'''
+
+
+TEXTS = [TEXT0, TEXT1, TEXT2, TEXT3]

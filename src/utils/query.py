@@ -19,7 +19,7 @@ ASSISTANT:{end}
 
 
 DIVINE = {
-    'temparature': 0.7,
+    'temperature': 0.7,
     'repetition_penalty': 1.3,
     'repetition_penalty_range': 128,
     'top_k': 33.0,
@@ -32,11 +32,21 @@ DIVINE = {
 }
 
 
-def query_api(prompt, preset=None) -> str:
+def query_api(prompt, preset=None, overrides=None) -> str:
     url = f"{API_ENDPOINT}/v1/generate"
 
     if not preset:
         preset = DIVINE
+    preset = preset.copy()
+
+    if not overrides:
+        overrides = {}
+    for k, v in overrides.items():
+        if k in preset:
+            preset[k] += v
+        else:
+            preset[k] = v
+    preset['temperature'] = max(preset['temperature'], 0.01)
 
     data = {**preset, "prompt": prompt, "truncation_length": 1024 * 16, "max_new_tokens": 1000}
     resp = requests.post(url, json=data)

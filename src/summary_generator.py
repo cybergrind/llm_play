@@ -36,6 +36,7 @@ BIG_SUMMARY_START = (
     "Please summarize the following story in roughly 30 words, maintaining only the key points:\n"
 )
 BIG_SUMMARY_END = ''
+ASSISTANT_PREFIX = " Short summary: \n"
 
 SUPER_SUMMARY_START = "<SUMMARIES_START>\n"
 SUPER_SUMMARY_END = """<SUMMARIES_END>
@@ -88,9 +89,9 @@ def summary_query(lst_or_text: Union[list, str], end=' '):
     return make_airoboros(prompt, end=end)
 
 
-def do_summary(prompt, args):
+def do_summary(prompt, args, overrides={}):
     assert len(prompt) < args.ctx, f'{len(prompt)=} / {prompt=}'
-    data = query_api(prompt)
+    data = query_api(prompt, overrides=overrides)
     if not data:
         log.info("No data")
         return False
@@ -106,6 +107,31 @@ def check_size(ctx_size, text, func=None):
     return size < ctx_size
 
 
+OVERRIDES = {'temperature': -0.1, 'repetition_penalty': 0.1}
+
+
+def squeeze(batch, args, target_size, prepare, overrides=None):
+    ctx_size = args.ctx
+    prompt = prepare(batch)
+    data = do_summary(prompt, args, overrides=overrides)
+    assert data, f'No data? {data=}'
+
+    if len(data) <= target_size:
+        return data
+
+    if len(data) >= ctx_size:
+        raise NotImplementedError(f'{len(data)=} vs {ctx_size=}')
+
+    if not overrides:
+        overrides = OVERRIDES.copy()
+
+    else:
+        for k, v in overrides.items():
+            overrides[k] = v
+
+    return squeeze([data], args, target_size, prepare)
+
+
 def recursive_summary(prepare: Callable[[list], str], summaries, args, nested=0):
     query = prepare(summaries)
     log.info(f'Recursive summary [{nested}]: {len(summaries)=} vs {len(query)=} vs {args.ctx=}')
@@ -115,19 +141,9 @@ def recursive_summary(prepare: Callable[[list], str], summaries, args, nested=0)
             func = partial(check_size, args.ctx, func=prepare)
             batched = split_with_overlap(summaries, overlap=0, func=func)
             subsummaries = Summaries(Path(f'recursive.{nested}.jsonl'), wipe=True)
+            assert batched, f'{batched=} vs {summaries=}'
             for batch in batched:
-                data = ''
-                not_summarized = True
-                while not_summarized:
-                    data = do_summary(prepare(batch), args)
-                    assert data, f'No data? {data=}'
-                    prepared_data = prepare([data])
-                    if len(prepared_data) > args.ctx // 2:
-                        log.debug(f'retry summarization: {len(data)=}')
-                        if len(prepared_data) < args.ctx:
-                            batch = [data]
-                    else:
-                        not_summarized = False
+                data = squeeze(batch, args, target_size=args.ctx // 2.2, prepare=prepare)
                 subsummaries.append(data)
             return recursive_summary(prepare, subsummaries, args, nested=nested + 1)
         else:
@@ -136,6 +152,7 @@ def recursive_summary(prepare: Callable[[list], str], summaries, args, nested=0)
 
 
 BIG_SUMMARIES = Path('tmp_ttt.jsonl')
+
 
 def do_big_summary(args):
     summaries = Summaries(BIG_SUMMARIES)
@@ -151,9 +168,7 @@ def do_big_summary(args):
                 continue
             summaries.append(candidate)
             data = candidate
-    final_summary = recursive_summary(
-        partial(summary_query, end=" Summary: \n"), summaries, args
-    )
+    final_summary = recursive_summary(partial(summary_query, end=ASSISTANT_PREFIX), summaries, args)
     json_line = json.dumps({"summary": final_summary})
 
     # append to args.temp

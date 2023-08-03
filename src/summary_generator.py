@@ -110,11 +110,12 @@ def check_size(ctx_size, text, func=None):
 OVERRIDES = {'temperature': -0.1, 'repetition_penalty': 0.1}
 
 
-def squeeze(batch, args, target_size, prepare, overrides=None):
+def squeeze(batch, args, target_size, prepare, overrides=None, iteration=0):
     ctx_size = args.ctx
     prompt = prepare(batch)
     data = do_summary(prompt, args, overrides=overrides)
     assert data, f'No data? {data=}'
+    assert iteration < 10, f'{iteration=}\n{batch=}'
 
     if len(data) <= target_size:
         return data
@@ -129,7 +130,7 @@ def squeeze(batch, args, target_size, prepare, overrides=None):
         for k, v in overrides.items():
             overrides[k] = v
 
-    return squeeze([data], args, target_size, prepare)
+    return squeeze([data], args, target_size, prepare, iteration=iteration + 1)
 
 
 def recursive_summary(prepare: Callable[[list], str], summaries, args, nested=0):

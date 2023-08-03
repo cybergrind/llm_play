@@ -47,8 +47,7 @@ def query_api(prompt, preset=None, overrides=None) -> str:
         else:
             preset[k] = v
     preset['temperature'] = max(preset['temperature'], 0.01)
-
-    data = {**preset, "prompt": prompt, "truncation_length": 1024 * 16, "max_new_tokens": 1000}
+    data = {**preset, "prompt": prompt, "max_new_tokens": 1000}
     resp = requests.post(url, json=data)
     resp.raise_for_status()
     data = resp.json()["results"][0]["text"].strip()
